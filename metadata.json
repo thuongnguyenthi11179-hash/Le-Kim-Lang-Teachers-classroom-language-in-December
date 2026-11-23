@@ -1,0 +1,6 @@
+{
+  "name": "English for Le Kim Lang's Primary Teachers – December Challenge",
+  "description": "Thử thách tiếng Anh giao tiếp tháng 12 dành cho giáo viên Trường Tiểu học Lê Kim Lăng — luyện nghe, nói, đọc, viết, ghi âm, theo dõi tiến độ và báo cáo quản lý.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
