@@ -164,9 +164,9 @@ export function AdminDashboardScreen({
           <p className="text-sm text-slate-600 mt-1">
             Trạng thái Google Sheets:{' '}
             <strong
-              className={summary.sheetsStatus.verified ? 'text-teal-700' : 'text-amber-700'}
+              className={summary.sheetsStatus?.verified ? 'text-teal-700' : 'text-amber-700'}
             >
-              {summary.sheetsStatus.label}
+              {summary.sheetsStatus?.label || 'Chế độ hoạt động ngoại tuyến'}
             </strong>
           </p>
         </div>

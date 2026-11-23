@@ -88,30 +88,30 @@ export function ProgressAndAchievementsScreen({
       {/* Honest Sync Status Strip */}
       <div
         className={`rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-          workspace.sheetsStatus.verified
+          workspace.sheetsStatus?.verified
             ? 'border-teal-200 bg-teal-50/70 text-teal-950'
             : 'border-amber-200 bg-amber-50/70 text-amber-950'
         }`}
       >
         <div className="flex items-start gap-3">
-          {workspace.sheetsStatus.verified ? (
+          {workspace.sheetsStatus?.verified ? (
             <CloudUpload className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
           ) : (
             <CloudOff className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           )}
           <div className="text-sm">
-            <p className="font-semibold">{workspace.sheetsStatus.label}</p>
+            <p className="font-semibold">{workspace.sheetsStatus?.label || 'Chế độ hoạt động ngoại tuyến'}</p>
             <p className="text-xs opacity-85 mt-0.5">
-              {workspace.sheetsStatus.verified
-                ? workspace.sheetsStatus.pendingSyncCount > 0
+              {workspace.sheetsStatus?.verified
+                ? (workspace.sheetsStatus.pendingSyncCount > 0
                   ? `Còn ${workspace.sheetsStatus.pendingSyncCount} lượt làm bài đang chờ đồng bộ lại.`
-                  : 'Mọi bài tập hoàn thành đều tự động lưu vào máy chủ và đồng bộ Google Sheets.'
+                  : 'Mọi bài tập hoàn thành đều tự động lưu vào máy chủ và đồng bộ Google Sheets.')
                 : 'Kết quả học tập của thầy/cô vẫn đang được lưu an toàn trên máy chủ ứng dụng. Nhà trường có thể kết nối Google Sheets trong mục Quản trị.'}
             </p>
           </div>
         </div>
 
-        {workspace.sheetsStatus.verified && workspace.sheetsStatus.pendingSyncCount > 0 && (
+        {workspace.sheetsStatus?.verified && workspace.sheetsStatus.pendingSyncCount > 0 && (
           <button
             type="button"
             disabled={retrying}

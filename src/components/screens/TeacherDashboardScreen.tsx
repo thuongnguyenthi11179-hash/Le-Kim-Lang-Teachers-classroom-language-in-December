@@ -171,7 +171,7 @@ export function TeacherDashboardScreen({
                 <span>Trạng thái đồng bộ</span>
               </div>
               <p className="mt-1 text-sm font-semibold text-slate-800 leading-snug">
-                {sheetsStatus.verified ? 'Đã kết nối Sheets' : 'Chế độ dùng thử'}
+                {sheetsStatus?.verified ? 'Đã kết nối Sheets' : 'Chế độ dùng thử'}
               </p>
             </div>
           </div>

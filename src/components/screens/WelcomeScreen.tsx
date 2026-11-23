@@ -87,7 +87,7 @@ export function WelcomeScreen({
             </p>
           </div>
           <p className="text-sm text-slate-500">
-            Trạng thái đồng bộ: <strong className="text-slate-700">{sheetsStatus.label}</strong>
+            Trạng thái đồng bộ: <strong className="text-slate-700">{sheetsStatus?.label || 'Chế độ hoạt động ngoại tuyến'}</strong>
           </p>
         </div>
 

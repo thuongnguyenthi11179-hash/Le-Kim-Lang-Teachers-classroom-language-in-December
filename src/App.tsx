@@ -109,8 +109,12 @@ export default function App() {
     api
       .getPublicConfig()
       .then((cfg) => {
-        setProfessionalGroups(cfg.professionalGroups);
-        setSheetsStatus(cfg.sheetsStatus);
+        if (cfg?.professionalGroups && Array.isArray(cfg.professionalGroups)) {
+          setProfessionalGroups(cfg.professionalGroups);
+        }
+        if (cfg?.sheetsStatus) {
+          setSheetsStatus(cfg.sheetsStatus);
+        }
       })
       .catch(() => {
         // Keep safe defaults

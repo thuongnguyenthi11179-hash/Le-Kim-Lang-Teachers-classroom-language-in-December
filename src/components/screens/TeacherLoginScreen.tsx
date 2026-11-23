@@ -243,7 +243,7 @@ export function TeacherLoginScreen({
                     onChange={(e) => setProfessionalGroup(e.target.value)}
                     className="w-full min-h-[48px] rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-sky-500"
                   >
-                    {professionalGroups.map((g) => (
+                    {(professionalGroups || []).map((g) => (
                       <option key={g} value={g}>
                         {g}
                       </option>

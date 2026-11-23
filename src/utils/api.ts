@@ -58,11 +58,26 @@ async function requestJson<T>(
     }
   }
 
+  // Check if response is HTML (e.g. Vercel SPA rewrite returning index.html with 200 OK for /api routes)
+  const contentType = response ? (response.headers.get('content-type') || '') : '';
+  if (!contentType.includes('application/json')) {
+    try {
+      return handleLocalFallback(url, options) as T;
+    } catch {
+      // fallback failed
+    }
+  }
+
   let data: Record<string, unknown> = {};
   try {
     data = (await response.json()) as Record<string, unknown>;
   } catch {
-    // non-JSON fallback
+    // If JSON parsing fails, fallback to client-side storage
+    try {
+      return handleLocalFallback(url, options) as T;
+    } catch {
+      // non-JSON fallback
+    }
   }
 
   if (!response.ok) {
