@@ -23,6 +23,7 @@ import type {
 import { api, ApiError } from './utils/api';
 import { stopSpeech } from './utils/speech';
 import { hasConfiguredApiKey, isUsingSystemApiKey } from './utils/gemini';
+import { sanitizeWorkspace } from './utils/localClientFallback';
 
 const DEFAULT_SHEETS_STATUS: SheetsConnectionStatus = {
   configured: false,
@@ -226,16 +227,17 @@ export default function App() {
     welcomeBack: boolean;
     workspace: TeacherWorkspaceData;
   }) => {
+    const ws = sanitizeWorkspace(data.workspace);
     setTeacherToken(data.token);
-    setWorkspace(data.workspace);
-    setSheetsStatus(data.workspace.sheetsStatus);
+    setWorkspace(ws);
+    setSheetsStatus(ws.sheetsStatus);
     setWelcomeBack(data.welcomeBack);
-    setActiveLessonId(data.workspace.profile.lastLessonId || 1);
+    setActiveLessonId(ws.profile.lastLessonId || 1);
     showToast(
       'ok',
       data.welcomeBack
-        ? `Welcome back, ${data.workspace.profile.fullName}! Đã khôi phục tiến độ học tập.`
-        : `Chào mừng thầy/cô ${data.workspace.profile.fullName} tham gia Thử thách Tháng 12!`
+        ? `Welcome back, ${ws.profile.fullName}! Đã khôi phục tiến độ học tập.`
+        : `Chào mừng thầy/cô ${ws.profile.fullName} tham gia Thử thách Tháng 12!`
     );
     navigate('dashboard');
   };

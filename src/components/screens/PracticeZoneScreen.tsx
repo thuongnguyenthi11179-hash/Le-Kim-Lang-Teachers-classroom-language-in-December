@@ -53,7 +53,7 @@ export function PracticeZoneScreen({
   const [activeLessonId, setActiveLessonId] = useState<number>(1);
   const [randomSeed, setRandomSeed] = useState(0);
 
-  const unresolvedMistakes = workspace.mistakes.filter((m) => !m.resolved);
+  const unresolvedMistakes = (workspace?.mistakes || []).filter((m) => !m.resolved);
 
   const startByLesson = (skill: SkillType, lessonId = 1) => {
     setSelectedSkill(skill);

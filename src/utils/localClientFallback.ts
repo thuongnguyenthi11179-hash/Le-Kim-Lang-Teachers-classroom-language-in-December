@@ -1,5 +1,6 @@
 import type {
   AdminDashboardSummary,
+  AdminTeacherRow,
   FinalAssessmentRecord,
   LessonSkillProgress,
   PracticeAttempt,
@@ -8,14 +9,13 @@ import type {
   TeacherProfile,
   TeacherWorkspaceData,
 } from '../types/app';
-import { computeBadges } from './badges';
 
 const STORAGE_KEY_TEACHERS = 'lkl_teachers_data';
 const STORAGE_KEY_ATTEMPTS = 'lkl_attempts_data';
 const STORAGE_KEY_WORKSPACE = 'lkl_active_workspace';
 const STORAGE_KEY_ADMIN_PIN = 'lkl_admin_pin';
 
-const DEFAULT_GROUPS = [
+export const DEFAULT_GROUPS = [
   'Tổ 1',
   'Tổ 2',
   'Tổ 3',
@@ -25,7 +25,7 @@ const DEFAULT_GROUPS = [
   'Ban Giám hiệu',
 ];
 
-const DEFAULT_SHEETS_STATUS: SheetsConnectionStatus = {
+export const DEFAULT_SHEETS_STATUS: SheetsConnectionStatus = {
   configured: false,
   verified: false,
   hasSecret: false,
@@ -37,7 +37,7 @@ const DEFAULT_SHEETS_STATUS: SheetsConnectionStatus = {
   label: 'Chế độ hoạt động ngoại tuyến / Vercel Client-Side',
 };
 
-function initLessonProgress(): Record<number, LessonSkillProgress> {
+export function initLessonProgress(): Record<number, LessonSkillProgress> {
   const map: Record<number, LessonSkillProgress> = {};
   for (let i = 1; i <= 10; i++) {
     map[i] = {
@@ -55,11 +55,57 @@ function initLessonProgress(): Record<number, LessonSkillProgress> {
   return map;
 }
 
+export function sanitizeWorkspace(
+  raw: any,
+  fallbackProfile?: Partial<TeacherProfile>
+): TeacherWorkspaceData {
+  const now = new Date().toISOString();
+  const profile: TeacherProfile = {
+    teacherId: String(raw?.profile?.teacherId || fallbackProfile?.teacherId || 'GV-01'),
+    fullName: String(raw?.profile?.fullName || fallbackProfile?.fullName || 'Thầy/Cô Giáo Viên'),
+    professionalGroup: String(raw?.profile?.professionalGroup || fallbackProfile?.professionalGroup || 'Tổ 1'),
+    email: String(raw?.profile?.email || fallbackProfile?.email || ''),
+    registrationDate: String(raw?.profile?.registrationDate || fallbackProfile?.registrationDate || now),
+    lastLogin: now,
+    accountStatus: (raw?.profile?.accountStatus === 'Inactive' ? 'Inactive' : 'Active') as 'Active' | 'Inactive',
+    lastLessonId: Number(raw?.profile?.lastLessonId) || 1,
+    consentAcceptedAt: String(raw?.profile?.consentAcceptedAt || fallbackProfile?.consentAcceptedAt || now),
+  };
+
+  const progressByLesson = initLessonProgress();
+  if (raw?.progressByLesson && typeof raw.progressByLesson === 'object') {
+    for (let i = 1; i <= 10; i++) {
+      if (raw.progressByLesson[i]) {
+        progressByLesson[i] = {
+          ...progressByLesson[i],
+          ...raw.progressByLesson[i],
+        };
+      }
+    }
+  }
+
+  return {
+    profile,
+    progressByLesson,
+    attempts: Array.isArray(raw?.attempts) ? raw.attempts : [],
+    mistakes: Array.isArray(raw?.mistakes) ? raw.mistakes : [],
+    finalAssessment: raw?.finalAssessment || null,
+    sheetsStatus: raw?.sheetsStatus || DEFAULT_SHEETS_STATUS,
+    activeDays: Array.isArray(raw?.activeDays) && raw.activeDays.length > 0 ? raw.activeDays : [now.split('T')[0]],
+    totalActiveSeconds: Number(raw?.totalActiveSeconds) || 60,
+  };
+}
+
 export function handleLocalFallback(url: string, options: RequestInit = {}): unknown {
   const method = (options.method || 'GET').toUpperCase();
   const parsedUrl = new URL(url, 'http://localhost');
   const pathname = parsedUrl.pathname;
-  const body = options.body ? JSON.parse(String(options.body)) : {};
+  let body: Record<string, any> = {};
+  try {
+    body = options.body ? JSON.parse(String(options.body)) : {};
+  } catch {
+    body = {};
+  }
 
   // 1. Public Config
   if (pathname === '/api/public/config') {
@@ -72,14 +118,19 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
   // 2. Lookup teacher
   if (pathname === '/api/auth/teacher/lookup') {
-    const identifier = parsedUrl.searchParams.get('identifier')?.trim().toLowerCase() || '';
-    const teachers: TeacherProfile[] = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
-    const found = teachers.find(
-      (t) =>
-        t.teacherId.toLowerCase() === identifier ||
-        t.fullName.toLowerCase() === identifier ||
-        (t.email && t.email.toLowerCase() === identifier)
-    );
+    const rawId = parsedUrl.searchParams.get('identifier')?.trim().toLowerCase() || '';
+    let teachers: (TeacherProfile & { pin?: string })[] = [];
+    try {
+      teachers = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
+    } catch {
+      teachers = [];
+    }
+    const found = teachers.find((t) => {
+      const tid = String(t?.teacherId || '').toLowerCase();
+      const fn = String(t?.fullName || '').toLowerCase();
+      const em = String(t?.email || '').toLowerCase();
+      return tid === rawId || fn === rawId || (em && em === rawId);
+    });
     if (found) {
       return {
         exists: true,
@@ -93,14 +144,24 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
   // 3. Register teacher
   if (pathname === '/api/auth/teacher/register') {
-    const { fullName, professionalGroup, identifier, email, consentAccepted } = body;
-    const teachers: (TeacherProfile & { pin: string })[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]'
-    );
+    const fullName = String(body.fullName || '').trim() || 'Thầy/Cô Giáo Viên';
+    const professionalGroup = String(body.professionalGroup || '').trim() || 'Tổ 1';
+    const identifier = String(body.identifier || '').trim() || `GV-${Date.now().toString().slice(-4)}`;
+    const email = String(body.email || '').trim();
+    const pin = String(body.pin || '1234').trim();
+    const consentAccepted = Boolean(body.consentAccepted);
+
+    let teachers: (TeacherProfile & { pin: string })[] = [];
+    try {
+      teachers = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
+    } catch {
+      teachers = [];
+    }
+
     const existing = teachers.find(
       (t) =>
-        t.teacherId.toLowerCase() === identifier.trim().toLowerCase() ||
-        t.fullName.toLowerCase() === fullName.trim().toLowerCase()
+        String(t?.teacherId || '').toLowerCase() === identifier.toLowerCase() ||
+        String(t?.fullName || '').toLowerCase() === fullName.toLowerCase()
     );
 
     const now = new Date().toISOString();
@@ -110,18 +171,22 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       teacherProfile = existing;
     } else {
       teacherProfile = {
-        teacherId: identifier.trim() || `GV-${Date.now().toString().slice(-4)}`,
-        fullName: fullName.trim(),
-        professionalGroup: professionalGroup || 'Tổ 1',
-        email: email || '',
+        teacherId: identifier,
+        fullName,
+        professionalGroup,
+        email,
         registrationDate: now,
         lastLogin: now,
         accountStatus: 'Active',
         lastLessonId: 1,
         consentAcceptedAt: consentAccepted ? now : '',
       };
-      teachers.push({ ...teacherProfile, pin: body.pin || '1234' });
-      localStorage.setItem(STORAGE_KEY_TEACHERS, JSON.stringify(teachers));
+      teachers.push({ ...teacherProfile, pin });
+      try {
+        localStorage.setItem(STORAGE_KEY_TEACHERS, JSON.stringify(teachers));
+      } catch {
+        // storage quota
+      }
     }
 
     const workspace: TeacherWorkspaceData = {
@@ -135,7 +200,12 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       totalActiveSeconds: 60,
     };
 
-    localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(workspace));
+    try {
+      localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(workspace));
+    } catch {
+      // storage quota
+    }
+
     return {
       token: `local-token-${teacherProfile.teacherId}`,
       welcomeBack: Boolean(existing),
@@ -145,43 +215,47 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
   // 4. Login teacher
   if (pathname === '/api/auth/teacher/login') {
-    const { identifier } = body;
-    const teachers: (TeacherProfile & { pin: string })[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]'
-    );
-    const found = teachers.find(
-      (t) =>
-        t.teacherId.toLowerCase() === identifier.trim().toLowerCase() ||
-        t.fullName.toLowerCase() === identifier.trim().toLowerCase()
-    );
+    const rawId = String(body.identifier || '').trim().toLowerCase();
+    let teachers: (TeacherProfile & { pin?: string })[] = [];
+    try {
+      teachers = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
+    } catch {
+      teachers = [];
+    }
 
-    let workspace: TeacherWorkspaceData;
-    const savedWs = localStorage.getItem(STORAGE_KEY_WORKSPACE);
-    if (savedWs) {
-      workspace = JSON.parse(savedWs);
-    } else {
-      const now = new Date().toISOString();
-      const profile: TeacherProfile = found || {
-        teacherId: identifier.trim() || 'GV-01',
-        fullName: identifier.trim() || 'Thầy/Cô Giáo Viên',
-        professionalGroup: 'Tổ 1',
-        email: '',
-        registrationDate: now,
-        lastLogin: now,
-        accountStatus: 'Active',
-        lastLessonId: 1,
-        consentAcceptedAt: now,
-      };
-      workspace = {
-        profile,
-        progressByLesson: initLessonProgress(),
-        attempts: [],
-        mistakes: [],
-        finalAssessment: null,
-        sheetsStatus: DEFAULT_SHEETS_STATUS,
-        activeDays: [now.split('T')[0]],
-        totalActiveSeconds: 120,
-      };
+    const found = teachers.find((t) => {
+      const tid = String(t?.teacherId || '').toLowerCase();
+      const fn = String(t?.fullName || '').toLowerCase();
+      const em = String(t?.email || '').toLowerCase();
+      return tid === rawId || fn === rawId || (em && em === rawId);
+    });
+
+    let rawWs: any = null;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
+      if (saved) rawWs = JSON.parse(saved);
+    } catch {
+      rawWs = null;
+    }
+
+    const now = new Date().toISOString();
+    const fallbackProfile: TeacherProfile = found || {
+      teacherId: String(body.identifier || 'GV-01').trim() || 'GV-01',
+      fullName: String(body.identifier || 'Thầy/Cô Giáo Viên').trim() || 'Thầy/Cô Giáo Viên',
+      professionalGroup: 'Tổ 1',
+      email: '',
+      registrationDate: now,
+      lastLogin: now,
+      accountStatus: 'Active',
+      lastLessonId: 1,
+      consentAcceptedAt: now,
+    };
+
+    const workspace = sanitizeWorkspace(rawWs, fallbackProfile);
+    try {
+      localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(workspace));
+    } catch {
+      // storage quota
     }
 
     return {
@@ -193,29 +267,43 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
   // 5. Teacher me (Workspace)
   if (pathname === '/api/teacher/me') {
-    const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
-    if (saved) return JSON.parse(saved);
-    throw new Error('Chưa đăng nhập');
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
+      if (saved) {
+        return sanitizeWorkspace(JSON.parse(saved));
+      }
+    } catch {
+      // ignore
+    }
+    return sanitizeWorkspace(null);
   }
 
   // 6. Active lesson
   if (pathname === '/api/teacher/active-lesson') {
-    const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
-    if (saved) {
-      const ws: TeacherWorkspaceData = JSON.parse(saved);
-      ws.profile.lastLessonId = Number(body.lessonId);
-      localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(ws));
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
+      if (saved) {
+        const ws: TeacherWorkspaceData = sanitizeWorkspace(JSON.parse(saved));
+        ws.profile.lastLessonId = Number(body.lessonId) || 1;
+        localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(ws));
+      }
+    } catch {
+      // ignore
     }
-    return { ok: true, lastLessonId: Number(body.lessonId) };
+    return { ok: true, lastLessonId: Number(body.lessonId) || 1 };
   }
 
   // 7. Submit Attempt
   if (pathname === '/api/teacher/attempts') {
-    const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
-    if (!saved) throw new Error('Chưa đăng nhập');
-    const ws: TeacherWorkspaceData = JSON.parse(saved);
+    let ws: TeacherWorkspaceData;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
+      ws = sanitizeWorkspace(saved ? JSON.parse(saved) : null);
+    } catch {
+      ws = sanitizeWorkspace(null);
+    }
 
-    const { lessonId, skill, passed, score, maximumScore, activityId } = body;
+    const { lessonId = 1, skill = 'listening', passed = false, score = 0, maximumScore = 10, activityId = '' } = body;
     const now = new Date().toISOString();
 
     const prog = ws.progressByLesson[lessonId] || {
@@ -248,7 +336,7 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       attemptId: body.attemptId || `ATT-${Date.now()}`,
       teacherId: ws.profile.teacherId,
       lessonId,
-      skill,
+      skill: skill as SkillType,
       activityId,
       score,
       maximumScore,
@@ -263,7 +351,11 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
     ws.attempts = [attempt, ...(ws.attempts || []).slice(0, 49)];
 
-    localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(ws));
+    try {
+      localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(ws));
+    } catch {
+      // quota
+    }
 
     return {
       duplicate: false,
@@ -276,19 +368,23 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
   // 8. Final Assessment
   if (pathname === '/api/teacher/final-assessment') {
-    const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
-    if (!saved) throw new Error('Chưa đăng nhập');
-    const ws: TeacherWorkspaceData = JSON.parse(saved);
+    let ws: TeacherWorkspaceData;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_WORKSPACE);
+      ws = sanitizeWorkspace(saved ? JSON.parse(saved) : null);
+    } catch {
+      ws = sanitizeWorkspace(null);
+    }
 
     const now = new Date().toISOString();
     const assessment: FinalAssessmentRecord = {
       teacherId: ws.profile.teacherId,
       fullName: ws.profile.fullName,
-      listeningScore: body.listeningScore || 25,
-      readingScore: body.readingScore || 25,
-      writingScore: body.writingScore || 25,
-      speakingScore: 25, // Auto-award 25 in client mode for completion certificate
-      totalScore: (body.listeningScore || 25) + (body.readingScore || 25) + (body.writingScore || 25) + 25,
+      listeningScore: Number(body.listeningScore) || 25,
+      readingScore: Number(body.readingScore) || 25,
+      writingScore: Number(body.writingScore) || 25,
+      speakingScore: 25,
+      totalScore: (Number(body.listeningScore) || 25) + (Number(body.readingScore) || 25) + (Number(body.writingScore) || 25) + 25,
       assessmentStatus: 'Hoàn thành',
       speakingSelfCheck: body.speakingSelfCheck,
       speakingSubmittedSentences: body.speakingSubmittedSentences,
@@ -297,7 +393,11 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
     };
 
     ws.finalAssessment = assessment;
-    localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(ws));
+    try {
+      localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(ws));
+    } catch {
+      // quota
+    }
 
     return {
       assessment,
@@ -318,25 +418,126 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
   // 10. Admin Dashboard
   if (pathname === '/api/admin/dashboard') {
-    const teachers: TeacherProfile[] = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
-    return {
-      teachers: teachers.map((t) => ({
-        teacherId: t.teacherId,
-        fullName: t.fullName,
-        professionalGroup: t.professionalGroup,
-        email: t.email,
-        registrationDate: t.registrationDate,
-        lastLogin: t.lastLogin,
-        accountStatus: t.accountStatus,
-        completedLessonsCount: 10,
-        activeDaysCount: 3,
-        totalActiveMinutes: 45,
-        finalScore: 100,
-        finalStatus: 'Hoàn thành',
+    let teachers: TeacherProfile[] = [];
+    try {
+      teachers = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
+    } catch {
+      teachers = [];
+    }
+
+    const teacherRows: AdminTeacherRow[] = teachers.map((t) => ({
+      teacherId: t.teacherId || 'GV-01',
+      fullName: t.fullName || 'Giáo viên',
+      professionalGroup: t.professionalGroup || 'Tổ 1',
+      email: t.email || '',
+      registrationDate: t.registrationDate || new Date().toISOString(),
+      lastLogin: t.lastLogin || new Date().toISOString(),
+      completedLessons: 0,
+      inProgressLessons: 1,
+      listeningCount: 1,
+      speakingCount: 1,
+      readingCount: 1,
+      writingCount: 1,
+      overallStatus: 'Đang học',
+      finalAssessmentStatus: 'Chưa làm',
+      finalTotalScore: null,
+      activeDaysCount: 1,
+    }));
+
+    const total = teacherRows.length;
+    const summary: AdminDashboardSummary = {
+      totalTeachers: total,
+      startedTeachers: total,
+      inProgressTeachers: total,
+      completedTeachers: 0,
+      completionRate: 0,
+      skillAttempts: {
+        listening: total * 2,
+        speaking: total,
+        reading: total * 2,
+        writing: total,
+      },
+      finalAssessmentsSubmitted: 0,
+      finalAssessmentsPendingSpeaking: 0,
+      finalAssessmentsCompleted: 0,
+      groupStats: DEFAULT_GROUPS.map((g) => ({
+        group: g,
+        teacherCount: teacherRows.filter((t) => t.professionalGroup === g).length,
+        avgCompletedLessons: 0,
+        completedAllCount: 0,
       })),
+      teachers: teacherRows,
       professionalGroups: DEFAULT_GROUPS,
       sheetsStatus: DEFAULT_SHEETS_STATUS,
     };
+    return summary;
+  }
+
+  // 11. Admin Teacher Detail
+  if (pathname.startsWith('/api/admin/teachers/')) {
+    const id = pathname.replace('/api/admin/teachers/', '').split('/')[0];
+    let teachers: TeacherProfile[] = [];
+    try {
+      teachers = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
+    } catch {
+      teachers = [];
+    }
+    const found = teachers.find((t) => t.teacherId === id) || {
+      teacherId: id,
+      fullName: 'Giáo viên',
+      professionalGroup: 'Tổ 1',
+      email: '',
+      registrationDate: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      accountStatus: 'Active' as const,
+      lastLessonId: 1,
+    };
+
+    return {
+      profile: found,
+      progressByLesson: initLessonProgress(),
+      attempts: [],
+      mistakes: [],
+      finalAssessment: null,
+      sheetsStatus: DEFAULT_SHEETS_STATUS,
+      activeDays: [new Date().toISOString().split('T')[0]],
+      totalActiveSeconds: 120,
+      activityLogs: [],
+    };
+  }
+
+  // 12. Admin Sheets
+  if (pathname === '/api/admin/sheets/status') {
+    return {
+      ...DEFAULT_SHEETS_STATUS,
+      fromEnv: false,
+      fromEnvUrl: false,
+      fromEnvSecret: false,
+    };
+  }
+
+  if (pathname === '/api/admin/sheets/config') {
+    return {
+      configured: false,
+      verified: false,
+      maskedUrl: '',
+      hasSecret: false,
+      sheetUrl: '',
+      apiSecret: '',
+    };
+  }
+
+  if (pathname === '/api/admin/sheets/test' || pathname === '/api/admin/sheets/sync-pending') {
+    return {
+      success: true,
+      message: 'Kết nối chế độ ngoại tuyến thành công.',
+      sheetsStatus: DEFAULT_SHEETS_STATUS,
+      rowCounts: { teachers: 0, attempts: 0, finalAssessments: 0 },
+    };
+  }
+
+  if (pathname === '/api/admin/groups') {
+    return { professionalGroups: DEFAULT_GROUPS };
   }
 
   return { ok: true };

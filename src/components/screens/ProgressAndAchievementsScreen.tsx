@@ -54,7 +54,7 @@ export function ProgressAndAchievementsScreen({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-sky-700">
-            Hồ sơ học tập cá nhân · {workspace.profile.fullName} ({workspace.profile.professionalGroup})
+            Hồ sơ học tập cá nhân · {workspace?.profile?.fullName || 'Giáo viên'} ({workspace?.profile?.professionalGroup || 'Tổ 1'})
           </p>
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 mt-1">
             {tab === 'progress'
@@ -149,7 +149,7 @@ export function ProgressAndAchievementsScreen({
             <div className="card-3d rounded-2xl p-5">
               <p className="text-xs font-medium text-slate-500">Lượt làm bài đã lưu</p>
               <p className="font-display font-mono tabular-nums text-2xl font-bold text-slate-900 mt-1">
-                {workspace.attempts.length} lượt
+                {(workspace?.attempts || []).length} lượt
               </p>
             </div>
           </div>
@@ -177,7 +177,7 @@ export function ProgressAndAchievementsScreen({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {LESSONS.map((lesson) => {
-                    const p = workspace.progressByLesson[lesson.id];
+                    const p = workspace?.progressByLesson?.[lesson.id];
                     return (
                       <tr key={lesson.id} className="hover:bg-sky-50/40">
                         <td className="py-3 px-4 font-mono tabular-nums font-semibold text-slate-700">
@@ -232,13 +232,13 @@ export function ProgressAndAchievementsScreen({
             <h2 className="font-display text-xl font-bold text-slate-900">
               Lịch sử bài làm đã lưu gần đây
             </h2>
-            {workspace.attempts.length === 0 ? (
+            {(workspace?.attempts || []).length === 0 ? (
               <p className="text-sm text-slate-500">
                 Chưa có lượt làm bài nào được ghi nhận. Thầy/cô hãy mở Bài 1 để bắt đầu nhé!
               </p>
             ) : (
               <div className="divide-y divide-slate-100">
-                {workspace.attempts.slice(0, 15).map((att) => (
+                {(workspace?.attempts || []).slice(0, 15).map((att) => (
                   <div
                     key={att.attemptId}
                     className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm"

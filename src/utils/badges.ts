@@ -1,12 +1,15 @@
 import type { AdminTeacherRow, BadgeInfo, TeacherWorkspaceData } from '../types/app';
 
-export function computeBadges(workspace: TeacherWorkspaceData): BadgeInfo[] {
-  const lessons = Object.values(workspace.progressByLesson);
-  const completedLessons = lessons.filter((l) => l.status === 'completed').length;
-  const listeningDone = lessons.filter((l) => l.listening).length;
-  const speakingDone = lessons.filter((l) => l.speaking).length;
+export function computeBadges(workspace?: TeacherWorkspaceData | null): BadgeInfo[] {
+  if (!workspace) return [];
+  const progress = workspace.progressByLesson || {};
+  const lessons = Object.values(progress);
+  const completedLessons = lessons.filter((l) => l?.status === 'completed').length;
+  const listeningDone = lessons.filter((l) => l?.listening).length;
+  const speakingDone = lessons.filter((l) => l?.speaking).length;
   const finalCompleted =
     workspace.finalAssessment !== null &&
+    workspace.finalAssessment !== undefined &&
     workspace.finalAssessment.assessmentStatus === 'Hoàn thành';
 
   return [
@@ -58,20 +61,34 @@ export function computeBadges(workspace: TeacherWorkspaceData): BadgeInfo[] {
   ];
 }
 
-export function computeWorkspaceStats(workspace: TeacherWorkspaceData) {
-  const lessons = Object.values(workspace.progressByLesson);
-  const completedLessons = lessons.filter((l) => l.status === 'completed').length;
-  const inProgressLessons = lessons.filter((l) => l.status === 'in_progress').length;
+export function computeWorkspaceStats(workspace?: TeacherWorkspaceData | null) {
+  if (!workspace) {
+    return {
+      completedLessons: 0,
+      inProgressLessons: 0,
+      overallPercent: 0,
+      practicePoints: 0,
+      activeDaysCount: 1,
+      unresolvedMistakes: 0,
+      nextLessonId: 1,
+    };
+  }
+  const progress = workspace.progressByLesson || {};
+  const lessons = Object.values(progress);
+  const completedLessons = lessons.filter((l) => l?.status === 'completed').length;
+  const inProgressLessons = lessons.filter((l) => l?.status === 'in_progress').length;
   const totalSkillUnits = lessons.reduce(
-    (sum, l) => sum + [l.listening, l.speaking, l.reading, l.writing].filter(Boolean).length,
+    (sum, l) => sum + [l?.listening, l?.speaking, l?.reading, l?.writing].filter(Boolean).length,
     0
   );
   const overallPercent = Math.round((totalSkillUnits / 40) * 100);
-  const practicePoints = workspace.attempts.reduce((sum, a) => sum + a.score, 0);
-  const unresolvedMistakes = workspace.mistakes.filter((m) => !m.resolved).length;
+  const attempts = Array.isArray(workspace.attempts) ? workspace.attempts : [];
+  const mistakes = Array.isArray(workspace.mistakes) ? workspace.mistakes : [];
+  const practicePoints = attempts.reduce((sum, a) => sum + (a?.score || 0), 0);
+  const unresolvedMistakes = mistakes.filter((m) => m && !m.resolved).length;
   const nextIncompleteLesson =
-    lessons.find((l) => l.status === 'in_progress') ||
-    lessons.find((l) => l.status === 'not_started') ||
+    lessons.find((l) => l?.status === 'in_progress') ||
+    lessons.find((l) => l?.status === 'not_started') ||
     lessons[0];
 
   return {
@@ -79,7 +96,7 @@ export function computeWorkspaceStats(workspace: TeacherWorkspaceData) {
     inProgressLessons,
     overallPercent,
     practicePoints,
-    activeDaysCount: workspace.activeDays.length,
+    activeDaysCount: Array.isArray(workspace.activeDays) ? workspace.activeDays.length : 1,
     unresolvedMistakes,
     nextLessonId: nextIncompleteLesson ? nextIncompleteLesson.lessonId : 1,
   };

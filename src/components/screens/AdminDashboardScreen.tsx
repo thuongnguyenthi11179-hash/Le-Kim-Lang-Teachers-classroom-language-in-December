@@ -127,7 +127,7 @@ export function AdminDashboardScreen({
 
   const displayedTeachers: AdminTeacherRow[] = showDemoPreview
     ? DEMO_ADMIN_PREVIEW_ROWS
-    : summary.teachers;
+    : (summary?.teachers || []);
 
   const filteredRows = displayedTeachers.filter((row) => {
     if (
@@ -144,10 +144,10 @@ export function AdminDashboardScreen({
 
   const maxSkillAttempts = Math.max(
     1,
-    summary.skillAttempts.listening,
-    summary.skillAttempts.speaking,
-    summary.skillAttempts.reading,
-    summary.skillAttempts.writing
+    summary?.skillAttempts?.listening || 0,
+    summary?.skillAttempts?.speaking || 0,
+    summary?.skillAttempts?.reading || 0,
+    summary?.skillAttempts?.writing || 0
   );
 
   return (
@@ -262,7 +262,7 @@ export function AdminDashboardScreen({
             </p>
           </div>
           <div className="space-y-3">
-            {summary.groupStats.map((g) => (
+            {(summary?.groupStats || []).map((g) => (
               <div key={g.group} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-slate-800">
@@ -296,10 +296,10 @@ export function AdminDashboardScreen({
           <div className="space-y-3">
             {(
               [
-                { label: 'Listening (Nghe)', count: summary.skillAttempts.listening, bar: 'bg-sky-500' },
-                { label: 'Speaking (Nói)', count: summary.skillAttempts.speaking, bar: 'bg-rose-500' },
-                { label: 'Reading (Đọc)', count: summary.skillAttempts.reading, bar: 'bg-teal-500' },
-                { label: 'Writing (Viết)', count: summary.skillAttempts.writing, bar: 'bg-amber-500' },
+                { label: 'Listening (Nghe)', count: summary?.skillAttempts?.listening || 0, bar: 'bg-sky-500' },
+                { label: 'Speaking (Nói)', count: summary?.skillAttempts?.speaking || 0, bar: 'bg-rose-500' },
+                { label: 'Reading (Đọc)', count: summary?.skillAttempts?.reading || 0, bar: 'bg-teal-500' },
+                { label: 'Writing (Viết)', count: summary?.skillAttempts?.writing || 0, bar: 'bg-amber-500' },
               ] as const
             ).map((s) => (
               <div key={s.label} className="space-y-1">

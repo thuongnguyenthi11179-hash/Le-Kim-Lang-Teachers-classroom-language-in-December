@@ -65,7 +65,9 @@ export function FinalChallengeScreen({
   const timerRef = useRef<number | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
 
-  const speakingSentences = FINAL_EXAM_DATA.speakingLessonIds.map((id) => getLessonById(id));
+  const speakingSentences = FINAL_EXAM_DATA.speakingLessonIds
+    .map((id) => getLessonById(id))
+    .filter((l): l is NonNullable<typeof l> => Boolean(l));
 
   const stopRecording = () => {
     if (timerRef.current !== null) {

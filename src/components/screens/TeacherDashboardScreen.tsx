@@ -45,9 +45,20 @@ export function TeacherDashboardScreen({
   const [filterStatus, setFilterStatus] = useState<'all' | 'not_started' | 'in_progress' | 'completed'>('all');
 
   const stats = computeWorkspaceStats(workspace);
-  const { profile, progressByLesson, sheetsStatus } = workspace;
+  const profile = workspace?.profile || {
+    teacherId: 'GV-01',
+    fullName: 'Thầy/Cô Giáo Viên',
+    professionalGroup: 'Tổ 1',
+    email: '',
+    registrationDate: new Date().toISOString(),
+    lastLogin: new Date().toISOString(),
+    accountStatus: 'Active' as const,
+    lastLessonId: 1,
+  };
+  const progressByLesson = workspace?.progressByLesson || {};
+  const sheetsStatus = workspace?.sheetsStatus;
 
-  const continueLessonId = profile.lastLessonId || stats.nextLessonId;
+  const continueLessonId = profile.lastLessonId || stats?.nextLessonId || 1;
   const continueLesson = LESSONS.find((l) => l.id === continueLessonId) || LESSONS[0];
 
   const filteredLessons = LESSONS.filter((lesson) => {
