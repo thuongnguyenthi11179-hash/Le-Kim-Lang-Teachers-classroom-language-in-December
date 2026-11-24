@@ -63,13 +63,13 @@ export function WelcomeScreen({
             </div>
           </div>
 
-          <div className="lg:col-span-6 relative">
+          <div className="lg:col-span-6 w-full min-w-0 relative">
             <IllustratedFrame
               src={HERO_BANNER_IMAGE}
               alt="Nhóm giáo viên tiểu học Trường Tiểu học Lê Kim Lăng vui vẻ học tiếng Anh cùng robot AI với micro, tai nghe, sách và bảng tương tác"
               title="English for Le Kim Lang's Primary Teachers"
-              aspectClass="aspect-[16/9] lg:h-full"
-              className="w-full"
+              aspectClass="aspect-[16/9]"
+              className="w-full rounded-2xl border border-sky-100 shadow-xs"
             />
           </div>
         </div>

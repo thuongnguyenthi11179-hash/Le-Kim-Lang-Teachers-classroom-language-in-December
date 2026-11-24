@@ -80,18 +80,18 @@ export function ReadingPractice({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch">
-        <div className="lg:col-span-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-5 w-full min-w-0">
           <IllustratedFrame
             src={lesson.image}
             alt={`Minh họa đọc hiểu câu ${lesson.english}`}
             title={lesson.english}
-            aspectClass="aspect-[4/3] lg:h-full"
-            className="rounded-2xl border border-sky-100"
+            aspectClass="aspect-[4/3]"
+            className="w-full rounded-2xl border border-sky-100 shadow-xs"
           />
         </div>
 
-        <div className="lg:col-span-7 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-7 w-full min-w-0 flex flex-col justify-between space-y-4">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium text-sky-700">

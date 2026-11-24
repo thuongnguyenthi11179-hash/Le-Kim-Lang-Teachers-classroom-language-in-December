@@ -21,7 +21,7 @@ export function IllustratedFrame({
   if (failed || !src) {
     return (
       <div
-        className={`${aspectClass} ${className} flex flex-col items-center justify-center bg-gradient-to-br from-sky-100 via-teal-50 to-amber-50 p-6 text-center text-sky-900`}
+        className={`w-full max-w-full ${aspectClass} ${className} flex flex-col items-center justify-center bg-gradient-to-br from-sky-100 via-teal-50 to-amber-50 p-6 text-center text-sky-900`}
         role="img"
         aria-label={alt}
       >
@@ -32,7 +32,7 @@ export function IllustratedFrame({
   }
 
   return (
-    <div className={`${aspectClass} ${className} relative overflow-hidden bg-sky-50`}>
+    <div className={`w-full max-w-full ${aspectClass} ${className} relative overflow-hidden bg-sky-50`}>
       <img
         src={src}
         alt={alt}
