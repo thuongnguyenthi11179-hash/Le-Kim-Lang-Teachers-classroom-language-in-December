@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Settings, KeyRound, Sparkles } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import type { ScreenId } from '../types/app';
 
 interface TopBarProps {
@@ -110,28 +110,8 @@ export function TopBar({
           })}
         </nav>
 
-        {/* Zone 3: Settings (API Key) + Single Primary Action + Mobile Menu Trigger */}
+        {/* Zone 3: Single Primary Action + Mobile Menu Trigger */}
         <div className="flex items-center gap-3 shrink-0">
-          {onOpenApiKeyModal && (
-            <button
-              type="button"
-              onClick={onOpenApiKeyModal}
-              title="Cấu hình Gemini API Key"
-              className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs hover:bg-rose-100"
-            >
-              <KeyRound className="h-4 w-4 text-rose-600 shrink-0" />
-              <div className="flex flex-col text-left">
-                <span className="text-[11px] font-bold tracking-tight text-slate-800 flex items-center gap-1">
-                  Settings (API Key)
-                  {hasApiKey && <span className="h-2 w-2 rounded-full bg-emerald-500" title="Key đã sẵn sàng" />}
-                </span>
-                <span className="text-[10px] text-red-600 font-extrabold whitespace-nowrap">
-                  Lấy API key để sử dụng app
-                </span>
-              </div>
-            </button>
-          )}
-
           <button
             type="button"
             onClick={() => {
@@ -162,26 +142,6 @@ export function TopBar({
       {/* Mobile Navigation Drawer */}
       {mobileOpen && (
         <div className="md:hidden border-t border-sky-100 bg-white px-4 py-3 shadow-lg space-y-2">
-          {onOpenApiKeyModal && (
-            <button
-              type="button"
-              onClick={() => {
-                setMobileOpen(false);
-                onOpenApiKeyModal();
-              }}
-              className="w-full flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50/80 p-3 text-left font-bold text-slate-800 hover:bg-rose-100"
-            >
-              <div className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-rose-600" />
-                <span className="text-xs font-bold text-slate-900">
-                  Settings (API Key)
-                  {hasApiKey && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />}
-                </span>
-              </div>
-              <span className="text-xs font-extrabold text-red-600">Lấy API key để sử dụng app</span>
-            </button>
-          )}
-
           <nav className="flex flex-col gap-1" aria-label="Điều hướng di động">
             {navItems.map((item) => {
               const active = currentScreen === item.id;

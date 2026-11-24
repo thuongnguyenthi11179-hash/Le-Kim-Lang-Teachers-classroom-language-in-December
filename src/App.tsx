@@ -549,6 +549,13 @@ export default function App() {
             >
               Quản trị nhà trường
             </button>
+            <button
+              type="button"
+              onClick={() => setIsApiKeyModalOpen(true)}
+              className="hover:text-sky-800 cursor-pointer text-xs text-slate-400 hover:text-slate-600"
+            >
+              Cấu hình AI (Tùy chọn)
+            </button>
           </div>
         </div>
       </footer>
