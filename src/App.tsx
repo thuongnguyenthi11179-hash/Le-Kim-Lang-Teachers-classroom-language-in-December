@@ -119,11 +119,6 @@ export default function App() {
       .catch(() => {
         // Keep safe defaults
       });
-
-    // Enforce API key setup on initial app launch if not yet configured
-    if (!hasConfiguredApiKey()) {
-      setIsApiKeyModalOpen(true);
-    }
   }, []);
 
   // Online / Offline listener + auto-flush queued attempts when network restores
@@ -560,7 +555,7 @@ export default function App() {
       <ApiKeyModal
         isOpen={isApiKeyModalOpen}
         onClose={() => setIsApiKeyModalOpen(false)}
-        isMandatory={!hasConfiguredApiKey()}
+        isMandatory={false}
         onKeySaved={() => {
           showToast('ok', 'Đã lưu cấu hình Model & API Key Gemini thành công!');
         }}

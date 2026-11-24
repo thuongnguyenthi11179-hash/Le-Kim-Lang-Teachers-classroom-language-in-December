@@ -108,12 +108,6 @@ export function WritingPractice({
   };
 
   const handleConsultAiTutor = async () => {
-    const apiKey = getStoredApiKey();
-    if (!apiKey) {
-      setAiError('Chưa cấu hình API Key. Thầy/cô vui lòng bấm vào nút "Settings (API Key)" màu đỏ trên thanh điều hướng để nhập key.');
-      return;
-    }
-
     setAiLoading(true);
     setAiError(null);
     setAiFeedback(null);
