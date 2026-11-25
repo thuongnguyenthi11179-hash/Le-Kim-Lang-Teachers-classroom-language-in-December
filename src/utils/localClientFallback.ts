@@ -1,3 +1,4 @@
+import { DEFAULT_SHEETS_CONFIG } from '../data/sheetsConfig';
 import type {
   AdminDashboardSummary,
   AdminTeacherRow,
@@ -57,11 +58,45 @@ interface LocalSheetsConfig {
 
 export function getStoredSheetsConfig(): LocalSheetsConfig {
   try {
+    // 1. Kiểm tra tham số trên URL nếu giáo viên truy cập qua link có kèm cấu hình
+    if (typeof window !== 'undefined' && window.location?.search) {
+      const sp = new URLSearchParams(window.location.search);
+      const urlParam = sp.get('sheets_url') || sp.get('gs_url');
+      const secretParam = sp.get('sheets_secret') || sp.get('gs_secret');
+      if (urlParam) {
+        const configFromParam: LocalSheetsConfig = {
+          url: urlParam.trim(),
+          secret: (secretParam || '').trim(),
+          verified: true,
+          spreadsheetName: 'Google Sheets (Trường TH Lê Kim Lăng)',
+        };
+        saveStoredSheetsConfig(configFromParam);
+        return configFromParam;
+      }
+    }
+
+    // 2. Kiểm tra bộ nhớ trình duyệt đã lưu trước đó
     const raw = localStorage.getItem(STORAGE_KEY_SHEETS_CONFIG);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.url === 'string' && parsed.url.trim().length > 0) {
+        return parsed;
+      }
+    }
   } catch {
     // ignore
   }
+
+  // 3. Sử dụng cấu hình mặc định toàn trường nếu đã được thiết lập sẵn
+  if (DEFAULT_SHEETS_CONFIG.url && DEFAULT_SHEETS_CONFIG.url.trim().length > 0) {
+    return {
+      url: DEFAULT_SHEETS_CONFIG.url.trim(),
+      secret: DEFAULT_SHEETS_CONFIG.secret.trim(),
+      verified: true,
+      spreadsheetName: DEFAULT_SHEETS_CONFIG.spreadsheetName || 'Google Sheets (Trường TH Lê Kim Lăng)',
+    };
+  }
+
   return { url: '', secret: '', verified: false };
 }
 
@@ -394,6 +429,22 @@ export async function handleLocalFallback(url: string, options: RequestInit = {}
       localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(workspace));
     } catch {
       // ignore
+    }
+
+    // Auto-sync teacher to Google Sheets on login
+    const sheetsCfg = getStoredSheetsConfig();
+    if (sheetsCfg.verified && sheetsCfg.url) {
+      void postToAppsScript(sheetsCfg.url, sheetsCfg.secret, 'sync_teacher', {
+        teacher: {
+          teacherId: workspace.profile.teacherId,
+          fullName: workspace.profile.fullName,
+          professionalGroup: workspace.profile.professionalGroup,
+          email: workspace.profile.email,
+          registrationDate: workspace.profile.registrationDate,
+          lastLogin: workspace.profile.lastLogin,
+          accountStatus: workspace.profile.accountStatus,
+        },
+      });
     }
 
     return {
