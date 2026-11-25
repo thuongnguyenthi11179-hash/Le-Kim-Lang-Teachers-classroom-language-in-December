@@ -24,6 +24,15 @@ interface ListeningPracticeProps {
   saving?: boolean;
 }
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export function ListeningPractice({
   lesson,
   completedPreviously,
@@ -36,15 +45,31 @@ export function ListeningPractice({
   const [submitted, setSubmitted] = useState(false);
   const [attemptKey, setAttemptKey] = useState(() => `ATT-L-${lesson.id}-${Date.now()}`);
 
+  const q = lesson.listening;
+
+  const [shuffledListening, setShuffledListening] = useState(() => {
+    const correctText = q.options[q.correctIndex];
+    const shuffled = shuffleArray(q.options);
+    return {
+      options: shuffled,
+      correctIndex: shuffled.indexOf(correctText),
+    };
+  });
+
   useEffect(() => {
+    const correctText = q.options[q.correctIndex];
+    const shuffled = shuffleArray(q.options);
+    setShuffledListening({
+      options: shuffled,
+      correctIndex: shuffled.indexOf(correctText),
+    });
     setHasListened(false);
     setSelectedIndex(null);
     setSubmitted(false);
     setAttemptKey(`ATT-L-${lesson.id}-${Date.now()}`);
-  }, [lesson.id]);
+  }, [lesson.id, q]);
 
-  const q = lesson.listening;
-  const isCorrect = selectedIndex === q.correctIndex;
+  const isCorrect = selectedIndex === shuffledListening.correctIndex;
   const canChoose = hasListened || supportMode;
 
   const handleSelectOption = async (idx: number) => {
@@ -52,7 +77,7 @@ export function ListeningPractice({
     setSelectedIndex(idx);
     setSubmitted(true);
 
-    const passed = idx === q.correctIndex;
+    const passed = idx === shuffledListening.correctIndex;
     await onSubmitResult({
       attemptId: attemptKey,
       lessonId: lesson.id,
@@ -62,14 +87,20 @@ export function ListeningPractice({
       maximumScore: 10,
       passed,
       resultStatus: passed ? 'Passed' : 'Needs Review',
-      userAnswer: q.options[idx],
-      expectedAnswer: q.options[q.correctIndex],
+      userAnswer: shuffledListening.options[idx],
+      expectedAnswer: shuffledListening.options[shuffledListening.correctIndex],
       feedback: passed ? 'Excellent listening!' : 'Nice try! Listen again.',
       prompt: `Nghe câu tiếng Anh bài ${lesson.id}`,
     });
   };
 
   const handleRetry = () => {
+    const correctText = q.options[q.correctIndex];
+    const shuffled = shuffleArray(q.options);
+    setShuffledListening({
+      options: shuffled,
+      correctIndex: shuffled.indexOf(correctText),
+    });
     setSelectedIndex(null);
     setSubmitted(false);
     setAttemptKey(`ATT-L-${lesson.id}-${Date.now()}`);
@@ -156,10 +187,10 @@ export function ListeningPractice({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {q.options.map((opt, idx) => {
+            {shuffledListening.options.map((opt, idx) => {
               const letter = ['A', 'B', 'C'][idx];
               const isSelected = selectedIndex === idx;
-              const isOptionCorrect = idx === q.correctIndex;
+              const isOptionCorrect = idx === shuffledListening.correctIndex;
 
               let styleClass =
                 'border-slate-200 bg-white text-slate-800 hover:border-sky-400 hover:bg-sky-50/60';
@@ -175,7 +206,7 @@ export function ListeningPractice({
 
               return (
                 <button
-                  key={opt}
+                  key={`${opt}-${idx}`}
                   type="button"
                   disabled={submitted || saving}
                   onClick={() => handleSelectOption(idx)}

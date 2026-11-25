@@ -23,6 +23,15 @@ interface ReadingPracticeProps {
   saving?: boolean;
 }
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export function ReadingPractice({
   lesson,
   completedPreviously,
@@ -34,21 +43,38 @@ export function ReadingPractice({
   const [submitted, setSubmitted] = useState(false);
   const [attemptKey, setAttemptKey] = useState(() => `ATT-R-${lesson.id}-0-${Date.now()}`);
 
+  const currentQ = lesson.readingQuestions[questionIdx] ?? lesson.readingQuestions[0];
+
+  const [shuffledData, setShuffledData] = useState(() => {
+    const q = lesson.readingQuestions[0] ?? lesson.readingQuestions[questionIdx];
+    const correctText = q.options[q.correctIndex];
+    const shuffled = shuffleArray(q.options);
+    return {
+      options: shuffled,
+      correctIndex: shuffled.indexOf(correctText),
+    };
+  });
+
   useEffect(() => {
-    setQuestionIdx(0);
+    const q = lesson.readingQuestions[questionIdx] ?? lesson.readingQuestions[0];
+    const correctText = q.options[q.correctIndex];
+    const shuffled = shuffleArray(q.options);
+    setShuffledData({
+      options: shuffled,
+      correctIndex: shuffled.indexOf(correctText),
+    });
     setSelectedIndex(null);
     setSubmitted(false);
-    setAttemptKey(`ATT-R-${lesson.id}-0-${Date.now()}`);
-  }, [lesson.id]);
+    setAttemptKey(`ATT-R-${lesson.id}-${questionIdx}-${Date.now()}`);
+  }, [lesson.id, questionIdx]);
 
-  const currentQ = lesson.readingQuestions[questionIdx] ?? lesson.readingQuestions[0];
-  const isCorrect = selectedIndex === currentQ.correctIndex;
+  const isCorrect = selectedIndex === shuffledData.correctIndex;
 
   const handleChoose = async (idx: number) => {
     if (submitted || saving) return;
     setSelectedIndex(idx);
     setSubmitted(true);
-    const passed = idx === currentQ.correctIndex;
+    const passed = idx === shuffledData.correctIndex;
     await onSubmitResult({
       attemptId: attemptKey,
       lessonId: lesson.id,
@@ -58,14 +84,21 @@ export function ReadingPractice({
       maximumScore: 10,
       passed,
       resultStatus: passed ? 'Passed' : 'Needs Review',
-      userAnswer: currentQ.options[idx],
-      expectedAnswer: currentQ.options[currentQ.correctIndex],
+      userAnswer: shuffledData.options[idx],
+      expectedAnswer: shuffledData.options[shuffledData.correctIndex],
       feedback: currentQ.explanationVi,
       prompt: currentQ.prompt,
     });
   };
 
   const handleRetry = () => {
+    const q = lesson.readingQuestions[questionIdx] ?? lesson.readingQuestions[0];
+    const correctText = q.options[q.correctIndex];
+    const shuffled = shuffleArray(q.options);
+    setShuffledData({
+      options: shuffled,
+      correctIndex: shuffled.indexOf(correctText),
+    });
     setSelectedIndex(null);
     setSubmitted(false);
     setAttemptKey(`ATT-R-${lesson.id}-${questionIdx}-${Date.now()}`);
@@ -73,9 +106,6 @@ export function ReadingPractice({
 
   const handleSwitchQuestion = (nextIdx: number) => {
     setQuestionIdx(nextIdx);
-    setSelectedIndex(null);
-    setSubmitted(false);
-    setAttemptKey(`ATT-R-${lesson.id}-${nextIdx}-${Date.now()}`);
   };
 
   return (
@@ -156,10 +186,10 @@ export function ReadingPractice({
         </div>
 
         <div className="space-y-3">
-          {currentQ.options.map((opt, idx) => {
+          {shuffledData.options.map((opt, idx) => {
             const letter = ['A', 'B', 'C'][idx];
             const isSelected = selectedIndex === idx;
-            const isOptionCorrect = idx === currentQ.correctIndex;
+            const isOptionCorrect = idx === shuffledData.correctIndex;
 
             let styleClass =
               'border-slate-200 bg-white text-slate-800 hover:border-sky-400 hover:bg-sky-50/50';
@@ -175,7 +205,7 @@ export function ReadingPractice({
 
             return (
               <button
-                key={opt}
+                key={`${opt}-${idx}`}
                 type="button"
                 disabled={submitted || saving}
                 onClick={() => handleChoose(idx)}
@@ -211,8 +241,8 @@ export function ReadingPractice({
                 {isCorrect ? 'Chính xác! Great reading!' : 'Chưa chính xác – Thầy/cô xem giải thích nhé!'}
               </p>
               <p className="text-sm leading-relaxed">
-                <strong>Đáp án đúng:</strong> {['A', 'B', 'C'][currentQ.correctIndex]}.{' '}
-                {currentQ.options[currentQ.correctIndex]}
+                <strong>Đáp án đúng:</strong> {['A', 'B', 'C'][shuffledData.correctIndex]}.{' '}
+                {shuffledData.options[shuffledData.correctIndex]}
               </p>
               <p className="text-sm leading-relaxed">{currentQ.explanationVi}</p>
             </div>
