@@ -27,16 +27,25 @@ export const DEFAULT_GROUPS = [
   'Ban Giám hiệu',
 ];
 
+function maskUrl(url: string): string {
+  if (!url) return '';
+  if (url.length < 25) return url;
+  return url.slice(0, 32) + '...' + url.slice(-10);
+}
+
 export const DEFAULT_SHEETS_STATUS: SheetsConnectionStatus = {
-  configured: false,
-  verified: false,
-  hasSecret: false,
-  maskedUrl: '',
-  lastTestedAt: null,
-  lastSyncAt: null,
+  configured: Boolean(DEFAULT_SHEETS_CONFIG.url),
+  verified: Boolean(DEFAULT_SHEETS_CONFIG.url),
+  hasSecret: Boolean(DEFAULT_SHEETS_CONFIG.secret),
+  maskedUrl: DEFAULT_SHEETS_CONFIG.url ? maskUrl(DEFAULT_SHEETS_CONFIG.url) : '',
+  lastTestedAt: new Date().toISOString(),
+  lastSyncAt: new Date().toISOString(),
   lastSyncError: null,
   pendingSyncCount: 0,
-  label: 'Chế độ hoạt động ngoại tuyến / Vercel Client-Side',
+  label: DEFAULT_SHEETS_CONFIG.url
+    ? `Đã kết nối: ${DEFAULT_SHEETS_CONFIG.spreadsheetName || 'Google Sheets'}`
+    : 'Chế độ hoạt động ngoại tuyến / Vercel Client-Side',
+  spreadsheetName: DEFAULT_SHEETS_CONFIG.spreadsheetName,
 };
 
 interface LocalSheetsConfig {
@@ -106,12 +115,6 @@ export function saveStoredSheetsConfig(cfg: LocalSheetsConfig) {
   } catch {
     // ignore
   }
-}
-
-function maskUrl(url: string): string {
-  if (!url) return '';
-  if (url.length < 25) return url;
-  return url.slice(0, 32) + '...' + url.slice(-10);
 }
 
 export async function postToAppsScript(

@@ -5,8 +5,12 @@
  */
 export const DEFAULT_SHEETS_CONFIG = {
   // Đường link Google Apps Script Web App (kết thúc bằng /exec)
-  url: (import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL as string) || '',
+  url:
+    (import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL as string) ||
+    'https://script.google.com/macros/s/AKfycbxCiO9cGERtQ91Q3tze6-ArQpDL9_bGE08CUvtMCeHy97nJh7sh1GlvY6kC028G0ZnN/exec',
   // Mã bí mật SHARED_SECRET cài trong Script Properties
-  secret: (import.meta.env.VITE_GOOGLE_APPS_SCRIPT_SECRET as string) || '',
+  secret:
+    (import.meta.env.VITE_GOOGLE_APPS_SCRIPT_SECRET as string) ||
+    'LeKimLang2026SecretKey',
   spreadsheetName: 'Le Kim Lang - December English Challenge 2026',
 };
