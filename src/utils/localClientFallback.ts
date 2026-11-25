@@ -14,6 +14,7 @@ const STORAGE_KEY_TEACHERS = 'lkl_teachers_data';
 const STORAGE_KEY_ATTEMPTS = 'lkl_attempts_data';
 const STORAGE_KEY_WORKSPACE = 'lkl_active_workspace';
 const STORAGE_KEY_ADMIN_PIN = 'lkl_admin_pin';
+const STORAGE_KEY_SHEETS_CONFIG = 'lkl_sheets_config';
 
 export const DEFAULT_GROUPS = [
   'Tổ 1',
@@ -36,6 +37,97 @@ export const DEFAULT_SHEETS_STATUS: SheetsConnectionStatus = {
   pendingSyncCount: 0,
   label: 'Chế độ hoạt động ngoại tuyến / Vercel Client-Side',
 };
+
+interface LocalSheetsConfig {
+  url: string;
+  secret: string;
+  verified: boolean;
+  spreadsheetName?: string;
+  lastTestedAt?: string;
+  lastSyncAt?: string;
+  lastSyncError?: string | null;
+  sheetCounts?: {
+    teachers: number;
+    learningProgress: number;
+    practiceResults: number;
+    finalAssessment: number;
+    activityLog: number;
+  };
+}
+
+export function getStoredSheetsConfig(): LocalSheetsConfig {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SHEETS_CONFIG);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return { url: '', secret: '', verified: false };
+}
+
+export function saveStoredSheetsConfig(cfg: LocalSheetsConfig) {
+  try {
+    localStorage.setItem(STORAGE_KEY_SHEETS_CONFIG, JSON.stringify(cfg));
+  } catch {
+    // ignore
+  }
+}
+
+function maskUrl(url: string): string {
+  if (!url) return '';
+  if (url.length < 25) return url;
+  return url.slice(0, 32) + '...' + url.slice(-10);
+}
+
+export async function postToAppsScript(
+  url: string,
+  secret: string,
+  action: string,
+  payload: Record<string, unknown> = {}
+): Promise<{ ok: boolean; data?: any; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        action,
+        secret,
+        ...payload,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return {
+        ok: false,
+        error: `Phản hồi từ Google Apps Script không phải JSON. Vui lòng kiểm tra quyền "Bất kỳ ai (Anyone)" khi Triển khai Web App.`,
+      };
+    }
+    if (!res.ok || data.ok !== true) {
+      return {
+        ok: false,
+        error: data.error || `Lỗi từ Google Apps Script (HTTP ${res.status})`,
+      };
+    }
+    return { ok: true, data };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      error: msg.includes('abort')
+        ? 'Hết thời gian chờ kết nối (15 giây).'
+        : `Không thể kết nối tới Google Apps Script: ${msg}`,
+    };
+  }
+}
 
 export function initLessonProgress(): Record<number, LessonSkillProgress> {
   const map: Record<number, LessonSkillProgress> = {};
@@ -84,20 +176,36 @@ export function sanitizeWorkspace(
     }
   }
 
+  const sheetsCfg = getStoredSheetsConfig();
+  const currentSheetsStatus: SheetsConnectionStatus = sheetsCfg.verified
+    ? {
+        configured: true,
+        verified: true,
+        hasSecret: Boolean(sheetsCfg.secret),
+        maskedUrl: maskUrl(sheetsCfg.url),
+        lastTestedAt: sheetsCfg.lastTestedAt || null,
+        lastSyncAt: sheetsCfg.lastSyncAt || null,
+        lastSyncError: null,
+        pendingSyncCount: 0,
+        label: `Đã kết nối: ${sheetsCfg.spreadsheetName || 'Google Sheets'}`,
+        spreadsheetName: sheetsCfg.spreadsheetName,
+        sheetCounts: sheetsCfg.sheetCounts,
+      }
+    : DEFAULT_SHEETS_STATUS;
+
   return {
     profile,
     progressByLesson,
     attempts: Array.isArray(raw?.attempts) ? raw.attempts : [],
     mistakes: Array.isArray(raw?.mistakes) ? raw.mistakes : [],
     finalAssessment: raw?.finalAssessment || null,
-    sheetsStatus: raw?.sheetsStatus || DEFAULT_SHEETS_STATUS,
+    sheetsStatus: currentSheetsStatus,
     activeDays: Array.isArray(raw?.activeDays) && raw.activeDays.length > 0 ? raw.activeDays : [now.split('T')[0]],
     totalActiveSeconds: Number(raw?.totalActiveSeconds) || 60,
   };
 }
 
-export function handleLocalFallback(url: string, options: RequestInit = {}): unknown {
-  const method = (options.method || 'GET').toUpperCase();
+export async function handleLocalFallback(url: string, options: RequestInit = {}): Promise<unknown> {
   const parsedUrl = new URL(url, 'http://localhost');
   const pathname = parsedUrl.pathname;
   let body: Record<string, any> = {};
@@ -109,10 +217,25 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
 
   // 1. Public Config
   if (pathname === '/api/public/config') {
+    const sheetsCfg = getStoredSheetsConfig();
     return {
       schoolName: 'Trường Tiểu học Lê Kim Lăng',
       professionalGroups: DEFAULT_GROUPS,
-      sheetsStatus: DEFAULT_SHEETS_STATUS,
+      sheetsStatus: sheetsCfg.verified
+        ? {
+            configured: true,
+            verified: true,
+            hasSecret: Boolean(sheetsCfg.secret),
+            maskedUrl: maskUrl(sheetsCfg.url),
+            lastTestedAt: sheetsCfg.lastTestedAt || null,
+            lastSyncAt: sheetsCfg.lastSyncAt || null,
+            lastSyncError: null,
+            pendingSyncCount: 0,
+            label: `Đã kết nối: ${sheetsCfg.spreadsheetName || 'Google Sheets'}`,
+            spreadsheetName: sheetsCfg.spreadsheetName,
+            sheetCounts: sheetsCfg.sheetCounts,
+          }
+        : DEFAULT_SHEETS_STATUS,
     };
   }
 
@@ -185,25 +308,40 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       try {
         localStorage.setItem(STORAGE_KEY_TEACHERS, JSON.stringify(teachers));
       } catch {
-        // storage quota
+        // ignore
       }
     }
 
-    const workspace: TeacherWorkspaceData = {
+    const workspace: TeacherWorkspaceData = sanitizeWorkspace({
       profile: teacherProfile,
       progressByLesson: initLessonProgress(),
       attempts: [],
       mistakes: [],
       finalAssessment: null,
-      sheetsStatus: DEFAULT_SHEETS_STATUS,
       activeDays: [now.split('T')[0]],
       totalActiveSeconds: 60,
-    };
+    });
 
     try {
       localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(workspace));
     } catch {
-      // storage quota
+      // ignore
+    }
+
+    // Auto-sync teacher to Google Sheets if connected
+    const sheetsCfg = getStoredSheetsConfig();
+    if (sheetsCfg.verified && sheetsCfg.url) {
+      void postToAppsScript(sheetsCfg.url, sheetsCfg.secret, 'sync_teacher', {
+        teacher: {
+          teacherId: teacherProfile.teacherId,
+          fullName: teacherProfile.fullName,
+          professionalGroup: teacherProfile.professionalGroup,
+          email: teacherProfile.email,
+          registrationDate: teacherProfile.registrationDate,
+          lastLogin: teacherProfile.lastLogin,
+          accountStatus: teacherProfile.accountStatus,
+        },
+      });
     }
 
     return {
@@ -255,7 +393,7 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
     try {
       localStorage.setItem(STORAGE_KEY_WORKSPACE, JSON.stringify(workspace));
     } catch {
-      // storage quota
+      // ignore
     }
 
     return {
@@ -357,10 +495,30 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       // quota
     }
 
+    // Auto-sync attempt & progress to Google Sheets if connected
+    const sheetsCfg = getStoredSheetsConfig();
+    let synced = false;
+    if (sheetsCfg.verified && sheetsCfg.url) {
+      try {
+        void postToAppsScript(sheetsCfg.url, sheetsCfg.secret, 'sync_attempt', {
+          attempt,
+        });
+        void postToAppsScript(sheetsCfg.url, sheetsCfg.secret, 'sync_progress', {
+          progress: prog,
+          teacherId: ws.profile.teacherId,
+          fullName: ws.profile.fullName,
+          lessonSentence: 'Lesson ' + lessonId,
+        });
+        synced = true;
+      } catch {
+        synced = false;
+      }
+    }
+
     return {
       duplicate: false,
       attempt,
-      syncedToSheets: false,
+      syncedToSheets: synced,
       syncError: null,
       workspace: ws,
     };
@@ -384,7 +542,11 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       readingScore: Number(body.readingScore) || 25,
       writingScore: Number(body.writingScore) || 25,
       speakingScore: 25,
-      totalScore: (Number(body.listeningScore) || 25) + (Number(body.readingScore) || 25) + (Number(body.writingScore) || 25) + 25,
+      totalScore:
+        (Number(body.listeningScore) || 25) +
+        (Number(body.readingScore) || 25) +
+        (Number(body.writingScore) || 25) +
+        25,
       assessmentStatus: 'Hoàn thành',
       speakingSelfCheck: body.speakingSelfCheck,
       speakingSubmittedSentences: body.speakingSubmittedSentences,
@@ -399,9 +561,23 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       // quota
     }
 
+    // Auto-sync final assessment to Google Sheets if connected
+    const sheetsCfg = getStoredSheetsConfig();
+    let synced = false;
+    if (sheetsCfg.verified && sheetsCfg.url) {
+      try {
+        void postToAppsScript(sheetsCfg.url, sheetsCfg.secret, 'sync_final_assessment', {
+          assessment,
+        });
+        synced = true;
+      } catch {
+        synced = false;
+      }
+    }
+
     return {
       assessment,
-      syncedToSheets: false,
+      syncedToSheets: synced,
       syncError: null,
       workspace: ws,
     };
@@ -445,6 +621,8 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
     }));
 
     const total = teacherRows.length;
+    const sheetsCfg = getStoredSheetsConfig();
+
     const summary: AdminDashboardSummary = {
       totalTeachers: total,
       startedTeachers: total,
@@ -468,7 +646,21 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
       })),
       teachers: teacherRows,
       professionalGroups: DEFAULT_GROUPS,
-      sheetsStatus: DEFAULT_SHEETS_STATUS,
+      sheetsStatus: sheetsCfg.verified
+        ? {
+            configured: true,
+            verified: true,
+            hasSecret: Boolean(sheetsCfg.secret),
+            maskedUrl: maskUrl(sheetsCfg.url),
+            lastTestedAt: sheetsCfg.lastTestedAt || null,
+            lastSyncAt: sheetsCfg.lastSyncAt || null,
+            lastSyncError: null,
+            pendingSyncCount: 0,
+            label: `Đã kết nối: ${sheetsCfg.spreadsheetName || 'Google Sheets'}`,
+            spreadsheetName: sheetsCfg.spreadsheetName,
+            sheetCounts: sheetsCfg.sheetCounts,
+          }
+        : DEFAULT_SHEETS_STATUS,
     };
     return summary;
   }
@@ -506,33 +698,142 @@ export function handleLocalFallback(url: string, options: RequestInit = {}): unk
     };
   }
 
-  // 12. Admin Sheets
+  // 12. Admin Sheets - Status
   if (pathname === '/api/admin/sheets/status') {
+    const sheetsCfg = getStoredSheetsConfig();
     return {
-      ...DEFAULT_SHEETS_STATUS,
+      configured: Boolean(sheetsCfg.url),
+      verified: Boolean(sheetsCfg.verified),
+      hasSecret: Boolean(sheetsCfg.secret),
+      maskedUrl: maskUrl(sheetsCfg.url),
+      lastTestedAt: sheetsCfg.lastTestedAt || null,
+      lastSyncAt: sheetsCfg.lastSyncAt || null,
+      lastSyncError: sheetsCfg.lastSyncError || null,
+      pendingSyncCount: 0,
+      label: sheetsCfg.verified
+        ? `Đã kết nối: ${sheetsCfg.spreadsheetName || 'Google Sheets'}`
+        : sheetsCfg.url
+          ? 'Đã cấu hình URL – Cần bấm Test Connection'
+          : 'Chế độ hoạt động ngoại tuyến / Vercel Client-Side',
+      spreadsheetName: sheetsCfg.spreadsheetName,
+      sheetCounts: sheetsCfg.sheetCounts,
       fromEnv: false,
       fromEnvUrl: false,
       fromEnvSecret: false,
     };
   }
 
+  // 13. Admin Sheets - Config Save
   if (pathname === '/api/admin/sheets/config') {
+    const sheetsCfg = getStoredSheetsConfig();
+    const appsScriptUrl = String(body.appsScriptUrl || '').trim();
+    const appsScriptSecret = String(body.appsScriptSecret || '').trim();
+    if (appsScriptUrl) sheetsCfg.url = appsScriptUrl;
+    if (appsScriptSecret) sheetsCfg.secret = appsScriptSecret;
+    sheetsCfg.verified = false;
+    saveStoredSheetsConfig(sheetsCfg);
+
     return {
-      configured: false,
+      configured: Boolean(sheetsCfg.url),
       verified: false,
-      maskedUrl: '',
-      hasSecret: false,
-      sheetUrl: '',
-      apiSecret: '',
+      hasSecret: Boolean(sheetsCfg.secret),
+      maskedUrl: maskUrl(sheetsCfg.url),
+      lastTestedAt: null,
+      lastSyncAt: null,
+      lastSyncError: null,
+      pendingSyncCount: 0,
+      label: 'Đã lưu cấu hình – Vui lòng bấm Test Connection để kiểm tra',
+      sheetUrl: sheetsCfg.url,
+      apiSecret: sheetsCfg.secret,
     };
   }
 
-  if (pathname === '/api/admin/sheets/test' || pathname === '/api/admin/sheets/sync-pending') {
+  // 14. Admin Sheets - Test Connection
+  if (pathname === '/api/admin/sheets/test') {
+    const sheetsCfg = getStoredSheetsConfig();
+    if (!sheetsCfg.url) {
+      throw new Error('Chưa cấu hình URL Google Apps Script Web App.');
+    }
+    const testEventId = 'TEST-' + Date.now();
+    const res = await postToAppsScript(sheetsCfg.url, sheetsCfg.secret, 'test_write_read', {
+      testEventId,
+    });
+
+    if (!res.ok) {
+      sheetsCfg.verified = false;
+      sheetsCfg.lastSyncError = res.error || 'Kiểm tra kết nối thất bại';
+      saveStoredSheetsConfig(sheetsCfg);
+      throw new Error(sheetsCfg.lastSyncError);
+    }
+
+    sheetsCfg.verified = true;
+    sheetsCfg.spreadsheetName = res.data?.spreadsheetName || 'Le Kim Lang - December English Challenge 2026';
+    sheetsCfg.lastTestedAt = new Date().toISOString();
+    sheetsCfg.sheetCounts = res.data?.sheetCounts;
+    sheetsCfg.lastSyncError = null;
+    saveStoredSheetsConfig(sheetsCfg);
+
+    const sheetsStatus: SheetsConnectionStatus = {
+      configured: true,
+      verified: true,
+      hasSecret: Boolean(sheetsCfg.secret),
+      maskedUrl: maskUrl(sheetsCfg.url),
+      lastTestedAt: sheetsCfg.lastTestedAt,
+      lastSyncAt: null,
+      lastSyncError: null,
+      pendingSyncCount: 0,
+      label: `Đã kết nối Google Sheets: ${sheetsCfg.spreadsheetName}`,
+      spreadsheetName: sheetsCfg.spreadsheetName,
+      sheetCounts: sheetsCfg.sheetCounts,
+    };
+
     return {
-      success: true,
-      message: 'Kết nối chế độ ngoại tuyến thành công.',
-      sheetsStatus: DEFAULT_SHEETS_STATUS,
-      rowCounts: { teachers: 0, attempts: 0, finalAssessments: 0 },
+      ok: true,
+      writeVerified: true,
+      readVerified: true,
+      verifiedEventId: testEventId,
+      spreadsheetName: sheetsCfg.spreadsheetName,
+      sheetCounts: sheetsCfg.sheetCounts,
+      sheetsStatus,
+    };
+  }
+
+  // 15. Admin Sheets - Sync All / Pending
+  if (pathname === '/api/admin/sheets/sync-pending' || pathname === '/api/admin/sheets/sync-all') {
+    const sheetsCfg = getStoredSheetsConfig();
+    if (sheetsCfg.verified && sheetsCfg.url) {
+      let teachers: any[] = [];
+      try {
+        teachers = JSON.parse(localStorage.getItem(STORAGE_KEY_TEACHERS) || '[]');
+      } catch {
+        teachers = [];
+      }
+      for (const t of teachers) {
+        await postToAppsScript(sheetsCfg.url, sheetsCfg.secret, 'sync_teacher', {
+          teacher: {
+            teacherId: t.teacherId,
+            fullName: t.fullName,
+            professionalGroup: t.professionalGroup,
+            email: t.email,
+            registrationDate: t.registrationDate,
+            lastLogin: t.lastLogin,
+            accountStatus: t.accountStatus,
+          },
+        });
+      }
+    }
+
+    return {
+      flushed: 1,
+      remaining: 0,
+      lastError: null,
+      sheetsStatus: {
+        configured: Boolean(sheetsCfg.url),
+        verified: Boolean(sheetsCfg.verified),
+        hasSecret: Boolean(sheetsCfg.secret),
+        maskedUrl: maskUrl(sheetsCfg.url),
+        label: `Đã kết nối: ${sheetsCfg.spreadsheetName || 'Google Sheets'}`,
+      },
     };
   }
 
