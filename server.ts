@@ -822,7 +822,7 @@ app.post('/api/auth/teacher/register', async (req, res) => {
   }
   const teacherId = normalizeIdentifier(rawIdentifier || email);
   if (teacherId.length < 3 || teacherId.length > 80) {
-    res.status(400).json({ error: 'Vui lòng nhập Mã giáo viên hoặc Email trường hợp lệ (tối thiểu 3 ký tự).' });
+    res.status(400).json({ error: 'Vui lòng nhập Gmail của giáo viên hợp lệ (tối thiểu 3 ký tự).' });
     return;
   }
   if (pin.length < 4 || pin.length > 32) {
@@ -835,7 +835,7 @@ app.post('/api/auth/teacher/register', async (req, res) => {
   }
   if (store.teachers[teacherId]) {
     res.status(409).json({
-      error: 'Mã giáo viên hoặc Email này đã tồn tại. Vui lòng chọn chế độ đăng nhập để tiếp tục bài học cũ.',
+      error: 'Gmail này đã được đăng ký. Vui lòng chọn chế độ đăng nhập để tiếp tục bài học cũ.',
       code: 'ALREADY_EXISTS',
     });
     return;
@@ -889,12 +889,12 @@ app.post('/api/auth/teacher/login', async (req, res) => {
   const pin = String(req.body?.pin || '').trim();
 
   if (!teacherId || !pin) {
-    res.status(400).json({ error: 'Vui lòng nhập Mã giáo viên / Email và mã PIN cá nhân.' });
+    res.status(400).json({ error: 'Vui lòng nhập Gmail của giáo viên và mã PIN cá nhân.' });
     return;
   }
   const existing = store.teachers[teacherId];
   if (!existing || !verifyHashedSecret(pin, existing.pinHash)) {
-    res.status(401).json({ error: 'Mã giáo viên/Email hoặc mã PIN không đúng. Vui lòng kiểm tra lại.' });
+    res.status(401).json({ error: 'Gmail hoặc mã PIN không đúng. Vui lòng kiểm tra lại.' });
     return;
   }
 

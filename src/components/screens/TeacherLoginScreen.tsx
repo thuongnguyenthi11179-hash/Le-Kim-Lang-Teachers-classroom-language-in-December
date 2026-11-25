@@ -68,7 +68,7 @@ export function TeacherLoginScreen({
 
     if (authTab === 'returning') {
       if (!identifier.trim() || !pin.trim()) {
-        setError('Vui lòng nhập Mã giáo viên (hoặc Email trường) và mã PIN cá nhân.');
+        setError('Vui lòng nhập Gmail của giáo viên và mã PIN cá nhân.');
         return;
       }
       setLoading(true);
@@ -96,7 +96,7 @@ export function TeacherLoginScreen({
       return;
     }
     if (identifier.trim().length < 3) {
-      setError('Vui lòng nhập Mã giáo viên hoặc Email trường (tối thiểu 3 ký tự) để định danh duy nhất.');
+      setError('Vui lòng nhập Gmail của giáo viên (tối thiểu 3 ký tự) để định danh duy nhất.');
       return;
     }
     if (pin.trim().length < 4) {
@@ -253,35 +253,24 @@ export function TeacherLoginScreen({
 
                 <div>
                   <label htmlFor="teacher-id" className="block text-sm font-semibold text-slate-800 mb-1.5">
-                    Mã giáo viên hoặc Email trường <span className="text-rose-600">*</span>
+                    Gmail của giáo viên <span className="text-rose-600">*</span>
                   </label>
                   <input
                     id="teacher-id"
                     type="text"
                     required
                     value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
+                    onChange={(e) => {
+                      setIdentifier(e.target.value);
+                      setEmail(e.target.value);
+                    }}
                     onBlur={() => void handleIdentifierBlur()}
-                    placeholder="Ví dụ: GV001 hoặc huong.ntm@lekimlang.edu.vn"
+                    placeholder="Ví dụ: nguyenvana@gmail.com"
                     className="w-full min-h-[48px] rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-sky-500"
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    Dùng để định danh duy nhất, tránh trùng lặp khi hai giáo viên cùng họ tên và giúp khôi phục tiến độ ở các lần sau.
+                    Dùng để lưu tiến độ và kết quả luyện tập của thầy/cô vào Google Sheet của trường.
                   </p>
-                </div>
-
-                <div>
-                  <label htmlFor="teacher-email-opt" className="block text-sm font-semibold text-slate-800 mb-1.5">
-                    Email trường (nếu mã ở trên là Mã giáo viên)
-                  </label>
-                  <input
-                    id="teacher-email-opt"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tengiaovien@lekimlang.edu.vn (không bắt buộc)"
-                    className="w-full min-h-[48px] rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-sky-500"
-                  />
                 </div>
 
                 <div>
@@ -343,7 +332,7 @@ export function TeacherLoginScreen({
 
                 <div>
                   <label htmlFor="return-id" className="block text-sm font-semibold text-slate-800 mb-1.5">
-                    Mã giáo viên hoặc Email trường <span className="text-rose-600">*</span>
+                    Gmail của giáo viên <span className="text-rose-600">*</span>
                   </label>
                   <input
                     id="return-id"
@@ -352,7 +341,7 @@ export function TeacherLoginScreen({
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     onBlur={() => void handleIdentifierBlur()}
-                    placeholder="Nhập mã giáo viên hoặc email đã đăng ký"
+                    placeholder="Ví dụ: nguyenvana@gmail.com"
                     className="w-full min-h-[48px] rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-sky-500"
                   />
                 </div>
@@ -401,15 +390,9 @@ export function TeacherLoginScreen({
                   <dd className="font-semibold text-slate-900 text-base">{professionalGroup}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Mã giáo viên / Email định danh</dt>
-                  <dd className="font-mono font-semibold text-sky-900 text-base">
-                    {identifier.trim().toUpperCase()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Email liên hệ</dt>
-                  <dd className="font-medium text-slate-800 text-base">
-                    {email.trim() || (identifier.includes('@') ? identifier.trim() : 'Chưa cung cấp')}
+                  <dt className="text-slate-500">Gmail của giáo viên</dt>
+                  <dd className="font-semibold text-sky-900 text-base">
+                    {identifier.trim()}
                   </dd>
                 </div>
               </dl>
