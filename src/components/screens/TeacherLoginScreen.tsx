@@ -161,16 +161,23 @@ export function TeacherLoginScreen({
       </button>
 
       <div className="card-3d rounded-3xl p-6 sm:p-8 space-y-6">
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-sky-700">
-            Trường Tiểu học Lê Kim Lăng · December English Challenge
-          </p>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900">
-            WELCOME, TEACHERS!
-          </h1>
-          <p className="text-base sm:text-lg text-slate-600">
-            Welcome to your December English Challenge!
-          </p>
+        <div className="flex items-center gap-4">
+          <img
+            src="/logo-le-kim-lang.jpg"
+            alt="Logo Trường Tiểu học Lê Kim Lăng"
+            className="h-14 w-14 sm:h-16 sm:w-16 object-contain rounded-full shadow-sm border border-sky-100 bg-white shrink-0"
+          />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-sky-700">
+              Trường Tiểu học Lê Kim Lăng · December English Challenge
+            </p>
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900">
+              WELCOME, TEACHERS!
+            </h1>
+            <p className="text-sm sm:text-base text-slate-600">
+              Welcome to your December English Challenge!
+            </p>
+          </div>
         </div>
 
         {/* Mode Switcher: First Time vs Returning */}

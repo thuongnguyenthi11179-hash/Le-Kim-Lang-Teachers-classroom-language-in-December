@@ -21,11 +21,23 @@ export function WelcomeScreen({
         <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
           <div className="lg:col-span-6 p-6 sm:p-10 flex flex-col justify-between space-y-6 bg-gradient-to-br from-white via-sky-50/40 to-teal-50/40">
             <div className="space-y-4">
-              <p className="text-sm font-semibold text-sky-700">
-                Trường Tiểu học Lê Kim Lăng · Tháng 12/2026 · Happy Classroom – Positive Communication
-              </p>
+              <div className="flex items-center gap-3.5">
+                <img
+                  src="/logo-le-kim-lang.jpg"
+                  alt="Logo Trường Tiểu học Lê Kim Lăng"
+                  className="h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-full shadow-md border-2 border-white ring-2 ring-sky-100 shrink-0 bg-white"
+                />
+                <div>
+                  <p className="text-sm sm:text-base font-bold text-sky-950 uppercase tracking-wide">
+                    Trường Tiểu học Lê Kim Lăng
+                  </p>
+                  <p className="text-xs sm:text-sm font-semibold text-sky-700">
+                    Tháng 12/2026 · Happy Classroom – Positive Communication
+                  </p>
+                </div>
+              </div>
 
-              <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.65rem] font-extrabold leading-[1.15] tracking-tight text-slate-900">
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.65rem] font-extrabold leading-[1.15] tracking-tight text-red-600">
                 ENGLISH FOR LE KIM LANG&apos;S PRIMARY TEACHERS
               </h1>
 

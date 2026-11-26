@@ -76,9 +76,14 @@ export function TopBar({
                   : 'welcome'
             )
           }
-          className="font-display text-lg font-bold tracking-tight text-sky-900 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-600"
+          className="font-display text-lg font-bold tracking-tight text-sky-900 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-600 flex items-center gap-2.5"
         >
-          English every month
+          <img
+            src="/logo-le-kim-lang.jpg"
+            alt="Logo Trường Tiểu học Lê Kim Lăng"
+            className="h-8 w-8 rounded-full object-contain border border-sky-100 shadow-xs bg-white"
+          />
+          <span>English every month</span>
         </button>
 
         {/* Zone 2: Clean single-line text nav links */}
