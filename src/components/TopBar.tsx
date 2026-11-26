@@ -125,7 +125,7 @@ export function TopBar({
             }}
             className={`rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap shrink-0 cursor-pointer min-h-[40px] ${
               mode === 'guest'
-                ? 'btn-3d-primary'
+                ? 'btn-3d-red'
                 : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors'
             }`}
           >

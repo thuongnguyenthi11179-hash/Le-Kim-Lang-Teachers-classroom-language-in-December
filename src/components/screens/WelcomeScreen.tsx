@@ -58,7 +58,7 @@ export function WelcomeScreen({
               <button
                 type="button"
                 onClick={onStartTeacher}
-                className="btn-3d-primary inline-flex min-h-[52px] items-center gap-2 rounded-2xl px-6 py-3 text-base font-bold whitespace-nowrap cursor-pointer"
+                className="btn-3d-red inline-flex min-h-[52px] items-center gap-2 rounded-2xl px-6 py-3 text-base font-bold whitespace-nowrap cursor-pointer"
               >
                 <span>START LEARNING – BẮT ĐẦU HỌC</span>
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />

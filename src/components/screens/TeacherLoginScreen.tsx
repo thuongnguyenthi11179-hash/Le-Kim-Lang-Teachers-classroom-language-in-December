@@ -371,7 +371,7 @@ export function TeacherLoginScreen({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="btn-3d-primary w-full min-h-[54px] inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-base font-bold cursor-pointer disabled:opacity-50"
+                  className="btn-3d-red w-full min-h-[54px] inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-base font-bold cursor-pointer disabled:opacity-50"
                 >
                   <span>{loading ? 'Đang mở tiến độ học tập...' : 'START LEARNING – TIẾP TỤC HỌC'}</span>
                   <ArrowRight className="h-5 w-5" aria-hidden="true" />
@@ -418,7 +418,7 @@ export function TeacherLoginScreen({
                 type="button"
                 onClick={() => void handleConfirmRegister()}
                 disabled={loading}
-                className="btn-3d-primary min-h-[50px] flex-1 inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-base font-bold cursor-pointer disabled:opacity-50"
+                className="btn-3d-red min-h-[50px] flex-1 inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-base font-bold cursor-pointer disabled:opacity-50"
               >
                 <span>{loading ? 'Đang khởi tạo...' : 'START LEARNING – BẮT ĐẦU HỌC'}</span>
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />
